@@ -1,0 +1,419 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+    <script>
+        /*
+            INIT
+        */
+        var headline_data = {{data|tojson}}
+
+        $( document ).ready(function() {
+            $("#rating").hide()
+            $("#ratingbutton").hide()
+        });
+        // to pretty print headline_data as string to copy and paste for saving
+        function print_headline_data(){
+            console.log(JSON.stringify(headline_data, null, 3));
+        }
+        
+
+        $(function() {
+            load_headline_data()
+
+        });
+
+        function load_headline_data(){
+            //load headline and summary
+            dream = $.trim(headline_data["dream"])
+            if(dream != ""){
+                show_headline(headline_data)
+            }else{
+                show_headline_editing(headline_data)
+            }
+
+            // load keywords
+            suggestions = headline_data["suggestions"]
+            if(suggestions.length > 0){
+                show_keywords(headline_data)
+            }
+
+             //load images
+            generations_list = headline_data["generations"]
+            if(generations_list.length > 0){
+                show_generations(generations_list, true)
+            }             
+        }
+
+        /*
+            HEADLINES
+        */
+
+        $(function() {
+            $("#submit_headline_btn").click(function(){
+                let dream = $("#headline_input").val()
+                let mood = $("#summary_input").val()
+                submit_headline(dream, mood)
+            })
+
+            $("#edit_headline_btn").click(function(){
+                show_headline_editing(headline_data)
+            })
+        });
+
+        function show_headline_editing(data){
+            $("#edit_headline_div").show()
+            $("#show_headline_div").hide()
+
+            $("#headline_input").val(data["dream"])
+            $("#summary_input").val(data["mood"])
+        }
+
+        function show_headline(data){
+            $("#edit_headline_div").hide()
+            $("#show_headline_div").show()
+            console.log(data)
+            $("#show_headline").text(data["dream"])
+            $("#show_summary").text(data["mood"])
+        }
+
+
+        function submit_headline(dream, mood){
+            let data = {"dream":dream,"mood":mood}
+            $.ajax({
+                type: "POST",
+                url: "/submit_headline",                
+                dataType : "json",
+                contentType: "application/json; charset=utf-8",
+                
+                data : JSON.stringify(data),
+                beforeSend: function () { 
+                    $("#spinner-div").show()
+                },
+                success: function(data, text){
+                    // console.log("submit_headline response")
+                    // console.log(data)                
+                    headline_data = data
+                    show_headline(data)
+                },
+                error: function(request, status, error){
+                    console.log("Error");
+                    console.log(request)
+                    console.log(status)
+                    console.log(error)
+                },
+                complete: function () { 
+                    $("#spinner-div").hide()
+                },
+            }); 
+        }
+
+        function edit_headline(){
+            show_headline_editing(headline_data)
+        }
+
+        /*
+            KEYWORDS
+        */
+
+        $(function() {
+            $("#get_keywords").click(function(){                
+                get_keywords_gpt()
+            })
+        });
+
+
+        function show_keywords(data){
+            let keywords = data["themes"]
+            $("#display_keywords").empty()
+            $("#display_keywords").append("Click a symbol to expand upon its meaning: <br>")
+            $.each(keywords, function(i, item){
+                let new_keyword_div = $("<button class='keyword_div'>") 
+                $(new_keyword_div).text(item).click(function(x){
+                    console.log("item:"+item)
+                    analyze_theme_gpt(item)
+                })
+
+                $("#display_keywords").append(new_keyword_div)
+            })
+        }
+
+        function show_song(data){
+            console.log("########################")
+            let interpretations = data['interpretations']
+            console.log(interpretations)
+            let interpretation = interpretations[interpretations.length - 1]
+            console.log(interpretation)
+
+            symbol = Object.keys(interpretation)
+            interp = interpretation[symbol]
+            console.log("symbol: ")
+            console.log(symbol)
+            console.log("interp: ")
+            console.log(interp)
+
+            $("#gallery").empty()
+            $("#gallery").append(interp)
+            $("#rating").show()
+            $("#ratingbutton").show()
+        }
+
+        function get_keywords_gpt(){
+            // console.log(headline)
+            // console.log(summary)
+            let data = {}//{"headline":headline,"summary":summary}
+            $.ajax({
+                type: "POST",
+                url: "/get_keywords",                
+                dataType : "json",
+                contentType: "application/json; charset=utf-8",
+                data : JSON.stringify(data),
+                beforeSend: function () { 
+                    $("#spinner-div").show()
+                },
+                success: function(data, text){
+                    console.log("submit_headline response")
+                    console.log(data)
+                    headline_data = data
+
+                    show_keywords(headline_data)
+
+                },
+                error: function(request, status, error){
+                    console.log("Error");
+                    console.log(request)
+                    console.log(status)
+                    console.log(error)
+                },
+                complete: function () { 
+                    $("#spinner-div").hide()
+                },
+            }); 
+        }
+
+        function analyze_theme_gpt(theme){
+            // console.log(headline)
+            // console.log(summary)
+            //let data = {}//{"headline":headline,"summary":summary}
+            $.ajax({
+                type: "POST",
+                url: "/write_song",
+                dataType : "json",
+                contentType: "application/json; charset=utf-8",
+                data : JSON.stringify(theme),
+                beforeSend: function () {
+                    $("#spinner-div").show()
+                },
+                success: function(data, text){
+                    console.log("submit_headline response")
+                    console.log(data)
+                    headline_data = data
+
+                    show_song(headline_data)
+
+                },
+                error: function(request, status, error){
+                    console.log("Error");
+                    console.log(request)
+                    console.log(status)
+                    console.log(error)
+                },
+                complete: function () {
+                    $("#spinner-div").hide()
+                },
+            });
+        }
+        function write_song_gpt(){
+            // console.log(headline)
+            // console.log(summary)
+            let data = {}//{"headline":headline,"summary":summary}
+            $.ajax({
+                type: "POST",
+                url: "/write_song",
+                dataType : "json",
+                contentType: "application/json; charset=utf-8",
+                data : JSON.stringify(data),
+                beforeSend: function () {
+                    $("#spinner-div").show()
+                },
+                success: function(data, text){
+                    console.log("submit_headline response")
+                    console.log(data)
+                    headline_data = data
+
+                    show_song(headline_data)
+
+                },
+                error: function(request, status, error){
+                    console.log("Error");
+                    console.log(request)
+                    console.log(status)
+                    console.log(error)
+                },
+                complete: function () {
+                    $("#spinner-div").hide()
+                },
+            });
+        }
+
+        /*
+            IMAGE GENERATIONS
+        */
+
+        $(function() {
+            $("#get_images_headline_btn").click(function(){
+                //console.log("get_images_headline_btn")
+                //let prompt = headline_data["headline"]
+                //get_images(prompt)
+                write_song_gpt()
+            })
+
+            
+        });
+
+        function get_images(prompt){
+            // console.log(headline)
+            // console.log(summary)
+            let data = {"prompt":prompt}
+            $.ajax({
+                type: "POST",
+                url: "/get_images",
+                dataType : "json",
+                contentType: "application/json; charset=utf-8",
+                data : JSON.stringify(data),
+                beforeSend: function () { 
+                    $("#spinner-div").show()
+                },
+                success: function(data, text){
+                    console.log("get_images response")
+                    console.log(data)  
+                    let prompt = data["prompt"]
+                    let url = data["url"]
+
+                    let new_generations_list = data
+                        // for i in new_images:
+                    $.each(new_generations_list, function(i, gen) {
+                        headline_data["generations"].push(gen) 
+                    })
+        
+
+                    // headline_data["generations"].push(data)
+                    show_generations(headline_data["generations"])
+
+                },
+                error: function(request, status, error){
+                    console.log("Error");
+                    console.log(request)
+                    console.log(status)
+                    console.log(error)
+                },
+                complete: function () { 
+                    $("#spinner-div").hide()
+                },
+            })
+        }
+        function btnClick()
+            {
+                //    button click
+                $("#ratingbutton").button().click(function(){
+                    let rating = $("#rating").val();
+                    $.ajax({
+                        type: "POST",
+                        url: "/submit_rating",
+                        dataType : "json",
+                        contentType: "application/json; charset=utf-8",
+                        data : JSON.stringify(rating),
+                        beforeSend: function () {
+                            $("#spinner-div").show()
+                        },
+                        success: function(data, text){
+                            console.log("submit_headline response")
+                            console.log(data)
+                            headline_data = data
+
+                            //show_song(headline_data)
+
+                        },
+                        error: function(request, status, error){
+                            console.log("Error");
+                            console.log(request)
+                            console.log(status)
+                            console.log(error)
+                        },
+                        complete: function () {
+                            $("#spinner-div").hide()
+                        },
+                    });
+                });
+            }
+
+
+        function show_generations(generations_list){             
+            $("#gallery").empty()
+
+            $.each(generations_list, function(i,item){
+                // console.log(item)
+                let id = item["id"]
+                let is_deleted = item["is_deleted"]
+                
+                if(is_deleted!="true"){
+                    let prompt = item["prompt"]
+                    let url = item["url"]
+
+                    let new_gen_div = $("<div id='"+id+"'><div>"+prompt+"</div><br><img src='"+url+"''></img></div>")
+
+                
+                    $("#gallery").append(new_gen_div)
+                }
+            })
+        }
+    </script>  
+
+    <div class="row">
+
+        <div id="explore_text" class="col-md-4" >
+            <div id="edit_headline_div">                
+                    Tell us about the most recent dream that you had...<br>
+                    <textarea id="headline_input" rows="2" cols="40"></textarea>
+                    <br>
+                    How has your mood been recently, is there anything that's been occupying your mind? <br>
+                    <textarea id="summary_input" rows="4" cols="40"></textarea>
+                    <br>
+                    <button id="submit_headline_btn" type="button">Submit</button>                
+            </div>
+            <div id="show_headline_div">
+                <b>Your dream:</b>
+                    <div id="show_headline" ></div>
+                <b>Your mood:</b>
+                    <div id="show_summary" ></div>
+                    <button id="edit_headline_btn" type="button">Edit</button>
+            </div>
+        </div>
+
+        <div id="keywords_to_select" class="col-md-4">
+            <b>Symbols</b> <button type="button" id="get_keywords">Analyze Symbols</button>
+            <div id="display_keywords">
+                
+            </div>
+        </div>    
+
+
+        <div id="see_generations" class="col-md-4">
+            <b>Jungian Symbolism</b> <button id="get_images_headline_btn" type="button">Reinterpret this theme!</button>
+            <div class="row" id="gallery">
+                <!-- <img src="static/generated_images/Santo-1673729232/Santo-1673729232-0.png"> -->
+            </div>
+            <div class="row" id="rating">
+                <label for="formControlRange">How would you rate this analysis (1-10)?</label>
+                <input type="range" class="form-control-range" min="0" max="10" step="0.5"  id="formControlRange" onInput="$('#rangeval').html($(this).val())">
+                <span id="rangeval">5<!-- Default value --></span>
+            </div>
+            <label for="customRange3" class="form-label"></label>
+            <button id="ratingbutton" type="button" class="btn btn-primary">Submit rating</button>
+
+        </div>
+    </div>
+
+
+{% endblock %}
+
